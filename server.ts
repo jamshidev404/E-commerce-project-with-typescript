@@ -8,7 +8,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use("/api/admin", require("./routes/adminRoute"));
+app.use("/api/admin", require('./routes/adminRoute'));
 app.use("/api/vandor", require("./routes/vandorRoute"));
 
 mongoose.connect(MONGO_URI, {

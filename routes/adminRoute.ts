@@ -6,8 +6,8 @@ import { createVandor,
 
 const router = express.Router();
 
-router.post('/vandor', createVandor )
-router.get("/vandors", getVandors);
+router.post('/add', createVandor )
+router.get("/all", getVandors);
 router.get("/vandor/:id", getVandorById);
 
 module.exports = router;
