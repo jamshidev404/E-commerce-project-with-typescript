@@ -1,11 +1,20 @@
-import express, { Request, Response, NextFunction } from "express";
-import { VandorLogin } from '../controllers/vandorController'
+import express from "express";
+import {
+  GetVandorProfile,
+  UpdateVandorProfile,
+  UpdateVandorService,
+  VandorLogin,
+} from "../controllers/vandorController";
+import { Authenticate } from "../middleware/commonAuth";
 
 const router = express.Router();
 
-router.post('/login', VandorLogin);
-router.get("/profile", );
-router.put('/profile', )
-router.put('/service'  )
+router.post("/login", Authenticate, VandorLogin);
+router.get("/profile", GetVandorProfile);
+router.put("/profile", UpdateVandorProfile);
+router.put("/service", UpdateVandorService);
 
-module.exports = router;
+router.post('/post', );
+router.get('/get', )
+
+module.exports = router;//Authenticate

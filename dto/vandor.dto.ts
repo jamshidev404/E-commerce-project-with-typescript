@@ -9,7 +9,22 @@ export interface CreateVandorInput {
   phone: String;
 }
 
+export interface EditVandorInputs {
+  name: string;
+  address: string;
+  phone: string;
+  foodTypes: [string]
+}
+
 export interface VandorLoginInput {
   email: string;
   password: string;
+}
+
+export interface VandorPayload {
+  _id: string;
+  email: string;
+  name: string;
+  password: string;
+  foodTypes: [string];
 }

@@ -1,16 +1,16 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 interface VandorDoc extends Document {
-  name: String;
-  ownerName: String;
-  foodType: [String];
+  name: string;
+  ownerName: string;
+  foodTypes: [string];
   pincode: String;
   address: String;
   email: string;
   password: string;
   phone: String;
   salt: string;
-  serviceAvaivable: String;
+  serviceAvaivable: boolean;
   coverImage: [String];
   rating: number;
   //foods: any;
