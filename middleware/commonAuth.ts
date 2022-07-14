@@ -10,12 +10,6 @@ declare global {
   }
 }
 
-declare module Express {
-    export interface Request {
-        user: AuthPayload;
-      }
-  }
-
 export const Authenticate = async (
   req: Request,
   res: Response,

@@ -8,6 +8,7 @@ import {
 } from "../utility/PasswordUtility";
 import { vandorFind } from "./admin.Controller";
 
+
 export const VandorLogin = async (req: Request, res: Response) => {
   const { email, password } = <VandorLoginInput>req.body;
 

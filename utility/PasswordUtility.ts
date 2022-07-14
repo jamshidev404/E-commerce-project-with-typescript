@@ -5,6 +5,7 @@ import { AuthPayload } from "../dto/Auth.dto";
 import { VandorPayload } from "../dto/vandor.dto";
 import { Request } from "express";
 
+
 export const GenerateSalt = async () => {
   return await bcrypt.genSalt(12);
 };
