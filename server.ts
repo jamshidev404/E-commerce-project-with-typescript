@@ -1,32 +1,17 @@
 import express from "express";
-import bodyParser from "body-parser";
-import mongoose from "mongoose";
-import path from "path";
+import App from "./services/ExpressApp";
+import dbConnect from "./services/Database";
 
-import { MONGO_URI } from "./config";
+const StartConnect = async () => {
+  const app = express();
 
-const app = express();
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+  await dbConnect();
 
-app.use("/images", express.static(path.join(__dirname, "images")));
+  await App(app);
 
-app.use("/api/admin", require("./routes/adminRoute"));
-app.use("/api/vandor", require("./routes/vandorRoute"));
-
-mongoose
-  .connect(MONGO_URI, {
-    //useNewUrlParser: true,
-    //useUnifiedTopology: true,
-  })
-  .then(() => {
-    console.log("DB connected");
-  })
-  .catch((err) => {
-    console.log(err);
+  app.listen(2300, () => {
+    console.log("Server running");
   });
+};
 
-const port = 2300;
-app.listen(port, () => {
-  console.log("Server running");
-});
+StartConnect();

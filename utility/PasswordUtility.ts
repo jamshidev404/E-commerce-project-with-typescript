@@ -5,7 +5,6 @@ import { AuthPayload } from "../dto/Auth.dto";
 import { VandorPayload } from "../dto/vandor.dto";
 import { Request } from "express";
 
-
 export const GenerateSalt = async () => {
   return await bcrypt.genSalt(12);
 };
@@ -35,7 +34,9 @@ export const ValidateSignature = async (req: Request) => {
       APP_SECRET
     )) as AuthPayload;
 
-    req.user = payload;
+
+    // XATONI TO'G'RILASH KERAK
+    // req.user = payload;
 
     return true;
   }

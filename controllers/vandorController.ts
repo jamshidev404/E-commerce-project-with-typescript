@@ -92,7 +92,7 @@ export const UpdateVandorService = async (
     const existingVandor = await vandorFind(user._id);
 
     if (existingVandor !== null) {
-      existingVandor.serviceAvaivable = !existingVandor.serviceAvaivable;
+      existingVandor.serviceAvialable = !existingVandor.serviceAvialable;
       const saveresult = await existingVandor.save();
       return res.json(saveresult);
     }

@@ -3,9 +3,9 @@ import { AuthPayload } from "../dto/Auth.dto";
 import { ValidateSignature } from "../utility/PasswordUtility";
 
 declare global {
-  namespace express {
+  namespace Express {
   interface Request {
-      user: AuthPayload;
+      user?: AuthPayload;
     }
   }
 }
@@ -20,6 +20,6 @@ export const Authenticate = async (
   if (validate) {
     next();
   } else {
-    return res.status(401).json({ message: "User not authorized" });
+    return res.json({ "message": "User not authorized" });
   }
 };
