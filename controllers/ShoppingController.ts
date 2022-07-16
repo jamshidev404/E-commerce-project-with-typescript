@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { Vandor } from "../models";
-import { FoodDoc } from '../models'
+import { FoodDoc } from "../models";
 
 export const GetFoodAvialability = async (
   req: Request,
@@ -8,8 +8,11 @@ export const GetFoodAvialability = async (
   next: NextFunction
 ) => {
   const pincode = req.params.pincode;
-  const result = await Vandor.find({ pincode: pincode, serviceAvialable: false })
-    .sort( "rating" )
+  const result = await Vandor.find({
+    pincode: pincode,
+    serviceAvialable: false,
+  })
+    .sort("rating")
     .populate("foods");
   if (result.length > 0) {
     return res.status(200).json(result);
@@ -23,17 +26,18 @@ export const GetTopRestaurants = async (
   res: Response,
   next: NextFunction
 ) => {
+  const pincode = req.params.pincode;
+  const result = await Vandor.find({
+    pincode: pincode,
+    serviceAvialable: false,
+  })
+    .sort("rating")
+    .limit(10);
+  if (result.length > 0) {
+    return res.status(200).json(result);
+  }
 
-    const pincode = req.params.pincode;
-    const result = await Vandor.find({ pincode: pincode, serviceAvialable: false })
-      .sort( "rating" )
-      .limit(10);
-    if (result.length > 0) {
-      return res.status(200).json(result);
-    }
-  
-    return res.status(400).json({ message: "Data not found" });
-
+  return res.status(400).json({ message: "Data not found" });
 };
 
 export const GetFoodIn30Min = async (
@@ -41,36 +45,61 @@ export const GetFoodIn30Min = async (
   res: Response,
   next: NextFunction
 ) => {
+  const pincode = req.params.pincode;
+  const result = await Vandor.find({
+    pincode: pincode,
+    serviceAvialable: false,
+  }).populate("foods");
 
-    const pincode = req.params.pincode;
-    const result = await Vandor.find({ pincode: pincode, serviceAvialable: false })
-      .populate( "foods" )
+  if (result.length > 0) {
+    let foodResult: any = [];
 
-    if (result.length > 0) {
+    result.map((vandor) => {
+      const foods = vandor.foods as [FoodDoc];
 
-        let foodResult: any = [];
+      foodResult.push(...foods.filter((food) => food.readyTime <= 30));
+    });
 
-        result.map(vandor => {
-            const foods = vandor.foods as [FoodDoc]
+    return res.status(200).json(foodResult);
+  }
 
-            foodResult.push(...foods.filter(food => food.readyTime <= 30))
-        })
-
-      return res.status(200).json(foodResult);
-    }
-  
-    return res.status(400).json({ message: "Data not found" });
-
+  return res.status(400).json({ message: "Data not found" });
 };
 
 export const SearchFoods = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  const pincode = req.params.pincode;
+  const result = await Vandor.find({
+    pincode: pincode,
+    serviceAvialable: false,
+  }).populate("foods");
+
+  if (result.length > 0) {
+    let foodResult: any = [];
+
+    result.map((item) => foodResult.push(...item.foods));
+
+    return res.status(200).json(foodResult);
+  }
+
+  return res.status(400).json({ message: "Data not found" });
+};
 
 export const RestaurantById = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+    
+  const id = req.params.id;
+  const result = await Vandor.findById(id).populate("foods");
+
+  if (result) {
+    return res.status(200).json(result);
+  }
+
+  return res.status(404).json({ message: "Data not found" });
+};
