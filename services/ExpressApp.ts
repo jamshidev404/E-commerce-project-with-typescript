@@ -10,6 +10,7 @@ export default async (app: Application) => {
   app.use("/api/admin", require("../routes/adminRoute"));
   app.use("/api/vandor", require("../routes/vandorRoute"));
   app.use("/api/shopping", require("../routes/ShoppingRoute"));
+  app.use("/api/customer", require("../routes/CustomerRoute"));
 
   
   return app;

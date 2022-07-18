@@ -21,7 +21,7 @@ export const ValidatePassword = async (
   return (await GeneratePassword(enteredPassword, salt)) === savedPassword;
 };
 
-export const GenerateSignature = (payload: VandorPayload) => {
+export const GenerateSignature = (payload: AuthPayload) => {
   return jwt.sign(payload, APP_SECRET, { expiresIn: "1d" });
 };
 
@@ -34,9 +34,8 @@ export const ValidateSignature = async (req: Request) => {
       APP_SECRET
     )) as AuthPayload;
 
-
     // XATONI TO'G'RILASH KERAK
-    // req.user = payload;
+    //req.user = payload;
 
     return true;
   }
