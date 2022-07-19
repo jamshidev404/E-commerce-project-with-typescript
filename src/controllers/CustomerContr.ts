@@ -206,7 +206,7 @@ export const GetCustomerProfile = async (
 
         if (profile) {
 
-            res.status(200).json(profile);
+           return res.status(200).json(profile);
         }
 
     return res.status(400).json({ message: "Error with Fetch Profile" });
@@ -244,6 +244,7 @@ export const EditCustomerProfile = async (
         profile.firstName = firstName;
         profile.lastName = lastName;
         profile.address = address;
+        
         const result = await profile.save();
         res.status(200).json(result);
   

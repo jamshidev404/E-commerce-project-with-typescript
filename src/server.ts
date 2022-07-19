@@ -1,6 +1,7 @@
 import express from "express";
 import App from "./services/ExpressApp";
 import dbConnect from "./services/Database";
+import { PORT } from "./config";
 
 const StartConnect = async () => {
   const app = express();
@@ -9,8 +10,8 @@ const StartConnect = async () => {
 
   await App(app);
 
-  app.listen(2300, () => {
-    console.log("Server running");
+  app.listen(PORT, () => {
+    console.log(`Server running ${PORT}`);
   });
 };
 
