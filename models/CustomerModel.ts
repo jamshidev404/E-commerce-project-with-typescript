@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface CustomerDoc extends Document {
+
   lastName: string;
   firstName: string;
   address: string;
@@ -13,6 +14,7 @@ export interface CustomerDoc extends Document {
   otp_expires: Date;
   lat: number;
   lng: number;
+  
 }
 
 const CustomerSchema = new Schema(
