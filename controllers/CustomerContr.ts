@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { validate, ValidationError } from "class-validator";
 import { plainToClass, plainToInstance } from "class-transformer";
-import { CreateCustomerInputs, UserLoginInputs } from "../dto/Customer.dto";
+import {
+  CreateCustomerInputs,
+  EditCustomerProfileInputs,
+  UserLoginInputs,
+} from "../dto/Customer.dto";
 import {
   GeneratePassword,
   GenerateSalt,
@@ -83,43 +87,45 @@ export const CustomerLogin = async (
   res: Response,
   next: NextFunction
 ) => {
+  const loginInputs = plainToClass(UserLoginInputs, req.body);
 
-    const loginInputs = plainToClass(UserLoginInputs, req.body);
+  const loginErrors = await validate(loginInputs, {
+    validationError: { target: false },
+  });
 
-    const loginErrors = await validate(loginInputs, { validationError: { target: false }} )
+  if (loginErrors.length > 0) {
+    return res.status(400).json(loginErrors);
+  }
+  const { email, password } = loginInputs;
+  const customer = await Customer.findOne({ email: email });
 
-    if (loginErrors.length > 0 ) {
-        return res.status(400).json(loginErrors)
+  if (customer) {
+    const validation = await ValidatePassword(
+      password,
+      customer.password,
+      customer.salt
+    );
+
+    if (validation) {
+      // generate the signature
+
+      const signature = await GenerateSignature({
+        _id: customer._id,
+        email: customer.email,
+        verified: customer.verified,
+      });
+
+      // send result to client
+
+      return res.status(201).json({
+        signature: signature,
+        email: customer.email,
+        verified: customer.verified,
+      });
     }
-    const { email, password} = loginInputs;
-    const customer = await Customer.findOne({ email: email })
+  }
 
-    if (customer) {
-
-        const validation = await ValidatePassword(password, customer.password, customer.salt);
-
-        if(validation) {
-
-            // generate the signature
-
-            const signature = await GenerateSignature({
-                _id: customer._id,
-                email: customer.email,
-                verified: customer.verified
-            })
-
-            // send result to client
-            
-            return res.status(201).json({
-                signature: signature,
-                email: customer.email,
-                verified: customer.verified
-            })
-        }
-    }
-
-    return res.status(404).json({ message: "Error login" })
-
+  return res.status(404).json({ message: "Error login" });
 };
 
 export const CustomerVerify = async (
@@ -127,7 +133,6 @@ export const CustomerVerify = async (
   res: Response,
   next: NextFunction
 ) => {
-    
   const { otp } = req.body;
   const customer = req.user;
 
@@ -156,23 +161,95 @@ export const CustomerVerify = async (
     }
   }
   return res.status(400).json({ message: "Error with OTP validation" });
-
 };
 
 export const RequestOtp = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  const customer = req.user;
+
+  if (customer) {
+    const profile = await Customer.findById(customer._id);
+
+    if (profile) {
+      const { otp, expires } = GenerateOTP();
+
+      profile.otp = otp;
+      profile.otp_expires = expires;
+
+      await profile.save();
+      await onRequestOTP(otp, profile.phone);
+
+      return res
+        .status(200)
+        .json({ message: "OTP sent your registired phone number" });
+    }
+  }
+
+  return res.status(400).json({ message: "Error with request OTP" });
+};
 
 export const GetCustomerProfile = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  const customer = req.user;
+
+  
+
+    if (customer) {
+
+        const profile = await Customer.findById(customer._id)
+
+        if (profile) {
+
+            res.status(200).json(profile);
+        }
+
+    return res.status(400).json({ message: "Error with Fetch Profile" });
+  }
+
+
+};
 
 export const EditCustomerProfile = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+
+    const customer = req.user;
+
+    const profileInputs = plainToClass(EditCustomerProfileInputs, req.body);
+  
+    const profileErrors = await validate(profileInputs, {
+      validationError: { target: false },
+    });
+  
+    if (profileErrors.length > 0) {
+      return res.status(400).json(profileErrors);
+    }
+  
+    const { firstName, lastName, address } = profileInputs;
+  
+    if (customer) {
+  
+      const profile = await Customer.findById(customer._id);
+  
+      if (profile) {
+  
+        profile.firstName = firstName;
+        profile.lastName = lastName;
+        profile.address = address;
+        const result = await profile.save();
+        res.status(200).json(result);
+  
+      }
+    }
+  
+    return res.status(400).json({ message: "Error with request OTP" });
+
+};
