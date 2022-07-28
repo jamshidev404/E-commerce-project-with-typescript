@@ -1,9 +1,10 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction, json } from "express";
 import { validate, ValidationError } from "class-validator";
 import { plainToClass, plainToInstance } from "class-transformer";
 import {
   CreateCustomerInputs,
   EditCustomerProfileInputs,
+  OrderInputs,
   UserLoginInputs,
 } from "../dto/Customer.dto";
 import {
@@ -14,6 +15,8 @@ import {
 } from "../utility/PasswordUtility";
 import { Customer } from "../models/CustomerModel";
 import { GenerateOTP, onRequestOTP } from "../utility/NotificationUtility";
+import { Food } from "../models";
+import { Order } from "../models/OrderModel";
 
 export const CustomerSignUp = async (
   req: Request,
@@ -58,6 +61,7 @@ export const CustomerSignUp = async (
     otp_expires: expires,
     lat: 0,
     lng: 0,
+    order: [],
   });
 
   if (result) {
@@ -198,21 +202,15 @@ export const GetCustomerProfile = async (
 ) => {
   const customer = req.user;
 
-  
+  if (customer) {
+    const profile = await Customer.findById(customer._id);
 
-    if (customer) {
-
-        const profile = await Customer.findById(customer._id)
-
-        if (profile) {
-
-           return res.status(200).json(profile);
-        }
+    if (profile) {
+      return res.status(200).json(profile);
+    }
 
     return res.status(400).json({ message: "Error with Fetch Profile" });
   }
-
-
 };
 
 export const EditCustomerProfile = async (
@@ -220,37 +218,217 @@ export const EditCustomerProfile = async (
   res: Response,
   next: NextFunction
 ) => {
+  const customer = req.user;
 
-    const customer = req.user;
+  const profileInputs = plainToClass(EditCustomerProfileInputs, req.body);
 
-    const profileInputs = plainToClass(EditCustomerProfileInputs, req.body);
-  
-    const profileErrors = await validate(profileInputs, {
-      validationError: { target: false },
-    });
-  
-    if (profileErrors.length > 0) {
-      return res.status(400).json(profileErrors);
+  const profileErrors = await validate(profileInputs, {
+    validationError: { target: false },
+  });
+
+  if (profileErrors.length > 0) {
+    return res.status(400).json(profileErrors);
+  }
+
+  const { firstName, lastName, address } = profileInputs;
+
+  if (customer) {
+    const profile = await Customer.findById(customer._id);
+
+    if (profile) {
+      profile.firstName = firstName;
+      profile.lastName = lastName;
+      profile.address = address;
+
+      const result = await profile.save();
+      res.status(200).json(result);
     }
-  
-    const { firstName, lastName, address } = profileInputs;
-  
-    if (customer) {
-  
-      const profile = await Customer.findById(customer._id);
-  
-      if (profile) {
-  
-        profile.firstName = firstName;
-        profile.lastName = lastName;
-        profile.address = address;
-        
-        const result = await profile.save();
-        res.status(200).json(result);
-  
+  }
+
+  return res.status(400).json({ message: "Error with request OTP" });
+};
+
+
+
+// ============== Cart Section ============== //
+
+export const addToCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const customer = req.user;
+
+  if (customer) {
+    const profile = await Customer.findById(customer._id).populate("cart.food");
+    let cartItems = Array();
+    const { _id, unit } = <OrderInputs>req.body;
+    const food = await Food.findById(_id);
+
+    if (food) {
+      if (profile !== null) {
+
+        //check for cart items
+        cartItems = profile.cart;
+
+        if (cartItems.length > 0) {
+
+          // check and update unit
+          let existFoodItem = cartItems.filter(
+            (item) => item.food._id.toString() === _id
+          );
+
+          if (existFoodItem.length > 0) {
+            const index = cartItems.indexOf(existFoodItem[0]);
+
+            if (unit > 0) {
+              cartItems[index] = { food, unit };
+            } else {
+              cartItems.splice(index, 1);
+            }
+          } else {
+            cartItems.push({ food, unit });
+          }
+        } else {
+
+          //add new item to cart
+          cartItems.push({ food, unit });
+        }
+
+        if (cartItems) {
+          profile.cart = cartItems as any
+          const cartResult = await profile.save();
+          return res.status(200).json(cartResult.cart)
+        }
       }
     }
-  
-    return res.status(400).json({ message: "Error with request OTP" });
+  }
 
+  return res.status(400).json({ message: "Unable to create cart!" })
+
+};
+
+export const getCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  const customer = req.user;
+
+  if (customer) {
+
+  }
+
+
+  return res.status(400).json({ message: "Cart is empty!" })
+
+};
+
+export const deleteCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {};
+
+//=============== Order Section =============//
+
+export const CreateOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  //grap current  login customer
+  const customer = req.user;
+
+  if (customer) {
+    //create an order Id
+    const orderId = `${Math.floor(Math.random() * 89999) + 1000}`;
+
+    const profile = await Customer.findById(customer._id);
+
+    // grap order items for request [ { id: XXX, unit: XXX } ]
+    const cart = <[OrderInputs]>req.body; // [ { id: XX, unit: XX } ]
+
+    let cartItems = Array();
+
+    let netAmount = 0.0;
+
+    // Calculate order amount
+
+    const foods = await Food.find()
+      .where("_id")
+      .in(cart.map((item) => item._id))
+      .exec();
+
+    foods.map((food) => {
+      cart.map(({ _id, unit }) => {
+        if (food._id == _id) {
+          netAmount += food.price + unit;
+          cartItems.push({ food, unit });
+        }
+      });
+    });
+
+    //create order with item description
+
+    if (cartItems) {
+      //create order
+      const currentOrder = await Order.create({
+        orderID: orderId,
+        items: cartItems,
+        totalAmoun: netAmount,
+        orderDat: new Date(),
+        paidThroug: "COD",
+        paymentResponse: "",
+        orderStatus: "Waiting",
+      });
+
+      if (currentOrder) {
+        profile.orders.push(currentOrder);
+        await profile.save();
+
+        return res.status(200).json(currentOrder);
+      }
+    }
+
+    // finally update orders to user account
+  }
+
+  return res.status(400).json({ message: "Error with create order" });
+};
+
+export const GetOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const customer = req.user;
+
+  if (customer) {
+    const profile = await Customer.findById(customer._id).populate("orders");
+
+    if (profile) {
+      return res.status(200).json(profile);
+    }
+  }
+
+  return res.status(404).json({ message: "Not found orders" });
+};
+
+export const GetOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const orderId = req.params.id;
+
+  if (orderId) {
+    const order = await Order.findById(orderId).populate("items.food");
+
+    if (order) {
+      return res.status(200).json(order);
+    }
+  }
+  return res.status(404).json({ message: "Not found order" });
 };
