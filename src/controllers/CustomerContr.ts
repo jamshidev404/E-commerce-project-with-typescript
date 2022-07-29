@@ -17,6 +17,7 @@ import { Customer } from "../models/CustomerModel";
 import { GenerateOTP, onRequestOTP } from "../utility/NotificationUtility";
 import { Food } from "../models";
 import { Order } from "../models/OrderModel";
+import { NationalPayload } from "twilio/lib/rest/api/v2010/account/availablePhoneNumber/national";
 
 export const CustomerSignUp = async (
   req: Request,
@@ -318,8 +319,11 @@ export const getCart = async (
 
   if (customer) {
 
+    const profile = await Customer.findById(customer._id).populate('cart.food')
+      if(profile) {
+        return res.status(200).json(profile.cart)
+      }
   }
-
 
   return res.status(400).json({ message: "Cart is empty!" })
 
@@ -329,7 +333,24 @@ export const deleteCart = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+
+  const customer = req.user;
+
+  if (customer) {
+
+    const profile = await Customer.findById(customer._id).populate('cart.food')
+      if(profile != null) {
+
+        profile.cart = [] as any;
+        const resultCart = await profile.save()
+        return res.status(200).json(resultCart)
+      }
+  }
+
+  return res.status(400).json({ message: "Cart is empty!" })
+
+};
 
 //=============== Order Section =============//
 
@@ -354,6 +375,8 @@ export const CreateOrder = async (
 
     let netAmount = 0.0;
 
+    let vendorId;
+
     // Calculate order amount
 
     const foods = await Food.find()
@@ -364,6 +387,7 @@ export const CreateOrder = async (
     foods.map((food) => {
       cart.map(({ _id, unit }) => {
         if (food._id == _id) {
+          vendorId = food.vendorId;
           netAmount += food.price + unit;
           cartItems.push({ food, unit });
         }
@@ -376,15 +400,23 @@ export const CreateOrder = async (
       //create order
       const currentOrder = await Order.create({
         orderID: orderId,
+        vendorId: vendorId,
         items: cartItems,
         totalAmoun: netAmount,
         orderDat: new Date(),
         paidThroug: "COD",
         paymentResponse: "",
         orderStatus: "Waiting",
+        remarks: '',
+        deliveryId: '',
+        appliedOffers: false,
+        offerId: null,
+        readyTime: 45
       });
 
       if (currentOrder) {
+
+        profile.cart = [] as any;
         profile.orders.push(currentOrder);
         await profile.save();
 

@@ -6,8 +6,12 @@ import {
   VandorLogin,
   AddFood,
   GetFoods,
-  UpdateVandorCoverImage
+  UpdateVandorCoverImage,
+  GetCurrentOrders,
+  GetOrderDetails,
+  ProcessOrder
 } from "../controllers/vandorController";
+
 import { Authenticate } from "../middleware/commonAuth";
 import multer from "multer";
 
@@ -33,5 +37,10 @@ router.put("/coverimage", images, UpdateVandorCoverImage);
 
 router.post('/post', AddFood);
 router.get('/get', GetFoods)
+
+//Orders
+router.get('/orders', GetCurrentOrders)
+router.get('/order/:id', GetOrderDetails)
+router.put('/order/:id/process', ProcessOrder)
 
 module.exports = router;//Authenticate

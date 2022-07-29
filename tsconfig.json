@@ -15,7 +15,8 @@
     "outDir": "./dist",//
     //"rootDir": "./src", //
     "moduleResolution": "node",
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "strictNullChecks": false
   }
 }
   
