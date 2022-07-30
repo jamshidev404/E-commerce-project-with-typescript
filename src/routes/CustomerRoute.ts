@@ -9,6 +9,8 @@ import {
   addToCart,
   getCart,
   deleteCart,
+  VerifyOffer,
+  CreatePayment,
 } from "../controllers/CustomerContr";
 import { GetOrders, CreateOrder, GetOrder } from "../controllers/CustomerContr";
 
@@ -44,11 +46,14 @@ router.post("cart", addToCart),
   router.delete("/cart", deleteCart);
 
 // Order
-
 router.post("/create-order", CreateOrder);
 router.get("/orders", GetOrders);
 router.get("/order/:id", GetOrder);
 
+// Apply Offer
+router.get('/offer/verify/:id', VerifyOffer)
+
 // Payment
+router.post('/create-payment', CreatePayment)
 
 module.exports = router;

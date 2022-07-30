@@ -18,6 +18,8 @@ import { GenerateOTP, onRequestOTP } from "../utility/NotificationUtility";
 import { Food } from "../models";
 import { Order } from "../models/OrderModel";
 import { NationalPayload } from "twilio/lib/rest/api/v2010/account/availablePhoneNumber/national";
+import { Offer } from "../models/OfferModel";
+import { Transaction } from "../models/Transaction";
 
 export const CustomerSignUp = async (
   req: Request,
@@ -464,3 +466,76 @@ export const GetOrder = async (
   }
   return res.status(404).json({ message: "Not found order" });
 };
+
+export const VerifyOffer = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+const offerId = req.params.id;
+const customer = req.user;
+
+if (customer) {
+  const appliedOffer = await Offer.findById(offerId);
+
+  if (appliedOffer) {
+    if (appliedOffer.promoType === "USER") {
+
+      // only can apply once per user
+
+    }else {
+      if(appliedOffer.isActive) {
+        return res.status(200).json({message: 'Offer is valid', offer: appliedOffer})
+      }
+    }
+  }
+}
+
+  return res.status(400).json({message: "Offer is not valid"})
+
+}
+
+export const CreatePayment = async (req:Request, res: Response) => {
+
+  const customer = req.user;
+
+  const { amount, offerId,  paymentMode } = req.body;
+
+  let payableAmount = Number(amount);
+
+  if (offerId) {
+    const appliedOffer = await Offer.findById(offerId);
+
+    if (appliedOffer) {
+
+      if (appliedOffer.isActive) {
+
+        payableAmount = (payableAmount - appliedOffer.offerAmount)
+
+      }
+    }
+  }
+
+
+
+  //Create record on Transaction
+
+  const transaction = await Transaction.create({
+    customer: customer._id,
+    vendorId: '',
+    orderId: '',
+    orderValue: payableAmount,
+    offerUsed: offerId || "NA",
+    status: "OPEN",
+    paymentMode: paymentMode,
+    paymentResponse: "Payment is cash on Delivery"
+
+  });
+
+  //return transaction ID
+  return res.status(200).json(transaction)
+
+
+
+}

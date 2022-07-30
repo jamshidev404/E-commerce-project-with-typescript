@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { Vandor } from "../models";
 import { FoodDoc } from "../models";
+import { Offer } from "../models/OfferModel";
 
 export const GetFoodAvialability = async (
   req: Request,
@@ -103,3 +104,21 @@ export const RestaurantById = async (
 
   return res.status(404).json({ message: "Data not found" });
 };
+
+export const GetAvailableOffers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  const pincode = req.params.pincode;
+
+  const offers = await Offer.find({ pincode: pincode, isActive: true })
+
+  if(offers) {
+    return res.status(200).json(offers)
+  }
+
+  return res.status(404).json({ message: "Offers not found!" })
+
+}

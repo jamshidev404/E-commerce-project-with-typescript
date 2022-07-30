@@ -375,31 +375,31 @@ export const EditOffer = async (
     const vendor = await vandorFind(user._id);
 
     if (vendor) {
-      const offer = await Offer.create({
-        offerType,
-        title,
-        description,
-        minValue,
-        offerAmount,
-        startValidity,
-        endValidity,
-        promocode,
-        promoType,
-        bank,
-        bins,
-        pincode,
-        isActive,
-        vendors: [vendor],
-      });
 
-      console.log(offer);
+        currentOffer.offerType = offerType,
+        currentOffer.title = title,
+        currentOffer.description = description,
+        currentOffer.minValue = minValue,
+        currentOffer.offerAmount = offerAmount,
+        currentOffer.startValidity = startValidity,
+        currentOffer.endValidity = endValidity,
+        currentOffer.promocode = promocode,
+        currentOffer.promoType = promoType,
+        currentOffer.bank = bank,
+        currentOffer.bins = bins,
+        currentOffer.pincode = pincode,
+        currentOffer.isActive = isActive
 
-      return res.status(200).json(offer);
-    }
+        const result = await currentOffer.save()
+
+        return res.json(result)
+        
+      };
   }
 }
 
-  return res.status(400).json({ message: "Unable to add offer" });
+
+  return res.status(400).json({ message: "" });
 
 
 };
