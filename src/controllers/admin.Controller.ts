@@ -1,13 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { CreateVandorInput } from "../dto/vandor.dto";
-import { Vandor } from "../models";
+import { Vendor, DeliveryUser } from "../models";
+import { Transaction } from "../models/Transaction";
 import { GenerateSalt, GeneratePassword } from "../utility/PasswordUtility";
 
 export const vandorFind = async(id: string | undefined, email? : string) => {
   if (email) {
-    return await Vandor.findOne({ email: email })
+    return await Vendor.findOne({ email: email })
   }else {
-    return await Vandor.findById(id)
+    return await Vendor.findById(id)
   }
 }
 
@@ -39,7 +40,7 @@ export const createVandor = async (
   const salt = await GenerateSalt();
   const usePassword = await GeneratePassword(password, salt);
 
-  const createVandor = await Vandor.create({
+  const createVandor = await Vendor.create({
     name: name,
     ownerName: ownerName,
     foodType: foodType,
@@ -52,7 +53,9 @@ export const createVandor = async (
     serviceAvaivable: false,
     coverImage: [],
     rating: 0,
-    foods: []
+    foods: [],
+    lat: 0,
+    lng: 0
   });
 
   return res.json(createVandor);
@@ -63,7 +66,7 @@ export const getVandors = async (
   res: Response,
   next: NextFunction
 ) => {
-  const vandors = await Vandor.find();
+  const vandors = await Vendor.find();
 
   if (vandors !== null) {
     return res.status(200).json({ vandors });
@@ -89,3 +92,82 @@ if (vandor !== null) {
 return res.status(404).json({ message: "Not found" })
 
 };
+
+export const GetTransactions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+
+const transactions = await Transaction.find()
+
+if (transactions) {
+  return res.status(200).json( transactions )
+}
+
+return res.status(404).json({ message: "Transactions not available!" })
+
+};
+
+export const GetTransactionId = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+const id = req.params.id;
+
+const transaction = await Transaction.findById(id)
+
+if (transaction) {
+  return res.status(200).json( transaction )
+}
+
+return res.status(404).json({ message: "Transaction not available!" })
+
+};
+
+export const VerifyDeliveryUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  const { _id, status } = req.body;
+
+  if(_id) {
+
+    const profile = await DeliveryUser.findById(_id)
+    
+    if (profile) {
+
+      profile.verified = status;
+      const result = await profile.save()
+
+      return res.status(200).json(result)
+    }
+  }
+
+  return res.status(400).json({ message: "Unable to verify Delivery user!" })
+
+}
+
+export const GetDeliveryUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  
+  const deliveryUsers = await DeliveryUser.find()
+
+    
+    if (deliveryUsers) {
+
+      return res.status(200).json(deliveryUsers)
+    }
+
+  return res.status(400).json({ message: "Unable to get Delivery users!" })
+
+}

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction, json } from "express";
 import { validate, ValidationError } from "class-validator";
 import { plainToClass, plainToInstance } from "class-transformer";
 import {
+  CartItem,
   CreateCustomerInputs,
   EditCustomerProfileInputs,
   OrderInputs,
@@ -15,7 +16,8 @@ import {
 } from "../utility/PasswordUtility";
 import { Customer } from "../models/CustomerModel";
 import { GenerateOTP, onRequestOTP } from "../utility/NotificationUtility";
-import { Food } from "../models";
+import { DeliveryUser, Food } from "../models";
+import { Vendor } from "../models";
 import { Order } from "../models/OrderModel";
 import { NationalPayload } from "twilio/lib/rest/api/v2010/account/availablePhoneNumber/national";
 import { Offer } from "../models/OfferModel";
@@ -251,8 +253,6 @@ export const EditCustomerProfile = async (
   return res.status(400).json({ message: "Error with request OTP" });
 };
 
-
-
 // ============== Cart Section ============== //
 
 export const addToCart = async (
@@ -265,17 +265,15 @@ export const addToCart = async (
   if (customer) {
     const profile = await Customer.findById(customer._id).populate("cart.food");
     let cartItems = Array();
-    const { _id, unit } = <OrderInputs>req.body;
+    const { _id, unit } = <CartItem>req.body;
     const food = await Food.findById(_id);
 
     if (food) {
       if (profile !== null) {
-
         //check for cart items
         cartItems = profile.cart;
 
         if (cartItems.length > 0) {
-
           // check and update unit
           let existFoodItem = cartItems.filter(
             (item) => item.food._id.toString() === _id
@@ -293,22 +291,20 @@ export const addToCart = async (
             cartItems.push({ food, unit });
           }
         } else {
-
           //add new item to cart
           cartItems.push({ food, unit });
         }
 
         if (cartItems) {
-          profile.cart = cartItems as any
+          profile.cart = cartItems as any;
           const cartResult = await profile.save();
-          return res.status(200).json(cartResult.cart)
+          return res.status(200).json(cartResult.cart);
         }
       }
     }
   }
 
-  return res.status(400).json({ message: "Unable to create cart!" })
-
+  return res.status(400).json({ message: "Unable to create cart!" });
 };
 
 export const getCart = async (
@@ -316,19 +312,16 @@ export const getCart = async (
   res: Response,
   next: NextFunction
 ) => {
-
   const customer = req.user;
 
   if (customer) {
-
-    const profile = await Customer.findById(customer._id).populate('cart.food')
-      if(profile) {
-        return res.status(200).json(profile.cart)
-      }
+    const profile = await Customer.findById(customer._id).populate("cart.food");
+    if (profile) {
+      return res.status(200).json(profile.cart);
+    }
   }
 
-  return res.status(400).json({ message: "Cart is empty!" })
-
+  return res.status(400).json({ message: "Cart is empty!" });
 };
 
 export const deleteCart = async (
@@ -336,25 +329,77 @@ export const deleteCart = async (
   res: Response,
   next: NextFunction
 ) => {
-
   const customer = req.user;
 
   if (customer) {
-
-    const profile = await Customer.findById(customer._id).populate('cart.food')
-      if(profile != null) {
-
-        profile.cart = [] as any;
-        const resultCart = await profile.save()
-        return res.status(200).json(resultCart)
-      }
+    const profile = await Customer.findById(customer._id).populate("cart.food");
+    if (profile != null) {
+      profile.cart = [] as any;
+      const resultCart = await profile.save();
+      return res.status(200).json(resultCart);
+    }
   }
 
-  return res.status(400).json({ message: "Cart is empty!" })
-
+  return res.status(400).json({ message: "Cart is empty!" });
 };
 
+
+//=============== Delivery Notification =================//
+
+const assignOrderForDelivery = async (orderId: string, vendorId: string) => {
+
+//find vendor
+const vendor = await Vendor.findById(vendorId)
+
+if (vendor) {
+
+  const areaCode = vendor.pincode;
+  const vendorLat = vendor.lat;
+  const vendorLng = vendor.lng;
+
+  //find the available Delivery person
+  const deliveryPerson = await DeliveryUser.find({ pincode: areaCode, verified: true, isAvailable: true })
+
+  if (deliveryPerson) {
+
+    //check the nearest delivery person and assign the order
+    console.log(`Delivery Person ${deliveryPerson[0]}`)
+    
+    const currentOrder = await Order.findById(orderId)
+
+    if (currentOrder) {
+
+      // update deliveryId
+      currentOrder.deliveryId = deliveryPerson[0]._id;
+      const response = await currentOrder.save()
+      
+      console.log(response)
+
+      // Notify to Vendor for received New Order using Firebase Push Notification
+    }
+  }
+}
+
+// update DeliveryID
+
+
+
+}
+
+
 //=============== Order Section =============//
+
+const validateTransaction = async (txnId: string) => {
+  const currentTransaction = await Transaction.findById(txnId);
+
+  if (currentTransaction) {
+    if (currentTransaction.status.toLowerCase() !== "failed") {
+      return { status: true, currentTransaction };
+    }
+  }
+
+  return { status: false, currentTransaction };
+};
 
 export const CreateOrder = async (
   req: Request,
@@ -364,14 +409,22 @@ export const CreateOrder = async (
   //grap current  login customer
   const customer = req.user;
 
+  const { txnId, amount, items } = <OrderInputs>req.body;
+
   if (customer) {
+    //validate transaction
+    const { status, currentTransaction } = await validateTransaction(txnId);
+
+    if (!status) {
+      return res.status(400).json({ message: "Error with create order!" });
+    }
+
     //create an order Id
     const orderId = `${Math.floor(Math.random() * 89999) + 1000}`;
 
     const profile = await Customer.findById(customer._id);
 
     // grap order items for request [ { id: XXX, unit: XXX } ]
-    const cart = <[OrderInputs]>req.body; // [ { id: XX, unit: XX } ]
 
     let cartItems = Array();
 
@@ -383,11 +436,11 @@ export const CreateOrder = async (
 
     const foods = await Food.find()
       .where("_id")
-      .in(cart.map((item) => item._id))
+      .in(items.map((item) => item._id))
       .exec();
 
     foods.map((food) => {
-      cart.map(({ _id, unit }) => {
+      items.map(({ _id, unit }) => {
         if (food._id == _id) {
           vendorId = food.vendorId;
           netAmount += food.price + unit;
@@ -404,31 +457,35 @@ export const CreateOrder = async (
         orderID: orderId,
         vendorId: vendorId,
         items: cartItems,
-        totalAmoun: netAmount,
-        orderDat: new Date(),
-        paidThroug: "COD",
-        paymentResponse: "",
+        totalAmount: netAmount,
+        paidAmount: amount,
+        orderDate: new Date(),
         orderStatus: "Waiting",
-        remarks: '',
-        deliveryId: '',
-        appliedOffers: false,
-        offerId: null,
-        readyTime: 45
+        remarks: "",
+        deliveryId: "",
+        readyTime: 45,
       });
 
-      if (currentOrder) {
+      profile.cart = [] as any;
+      profile.orders.push(currentOrder);
 
-        profile.cart = [] as any;
-        profile.orders.push(currentOrder);
-        await profile.save();
+      currentTransaction.vendorId = vendorId;
+      currentTransaction.orderId = orderId;
+      currentTransaction.status = "CORFIRMED";
 
-        return res.status(200).json(currentOrder);
-      }
+      await currentTransaction.save();
+
+      assignOrderForDelivery(currentOrder._id, vendorId)
+
+      const profileSaveResponse = await profile.save();
+
+      return res.status(200).json(profileSaveResponse);
+    } else {
+      return res.status(400).json({ message: "Unable to create order" });
     }
-
-    // finally update orders to user account
   }
 
+  // finally update orders to user account
   return res.status(400).json({ message: "Error with create order" });
 };
 
@@ -472,35 +529,32 @@ export const VerifyOffer = async (
   res: Response,
   next: NextFunction
 ) => {
+  const offerId = req.params.id;
+  const customer = req.user;
 
-const offerId = req.params.id;
-const customer = req.user;
+  if (customer) {
+    const appliedOffer = await Offer.findById(offerId);
 
-if (customer) {
-  const appliedOffer = await Offer.findById(offerId);
-
-  if (appliedOffer) {
-    if (appliedOffer.promoType === "USER") {
-
-      // only can apply once per user
-
-    }else {
-      if(appliedOffer.isActive) {
-        return res.status(200).json({message: 'Offer is valid', offer: appliedOffer})
+    if (appliedOffer) {
+      if (appliedOffer.promoType === "USER") {
+        // only can apply once per user
+      } else {
+        if (appliedOffer.isActive) {
+          return res
+            .status(200)
+            .json({ message: "Offer is valid", offer: appliedOffer });
+        }
       }
     }
   }
-}
 
-  return res.status(400).json({message: "Offer is not valid"})
+  return res.status(400).json({ message: "Offer is not valid" });
+};
 
-}
-
-export const CreatePayment = async (req:Request, res: Response) => {
-
+export const CreatePayment = async (req: Request, res: Response) => {
   const customer = req.user;
 
-  const { amount, offerId,  paymentMode } = req.body;
+  const { amount, offerId, paymentMode } = req.body;
 
   let payableAmount = Number(amount);
 
@@ -508,34 +562,25 @@ export const CreatePayment = async (req:Request, res: Response) => {
     const appliedOffer = await Offer.findById(offerId);
 
     if (appliedOffer) {
-
       if (appliedOffer.isActive) {
-
-        payableAmount = (payableAmount - appliedOffer.offerAmount)
-
+        payableAmount = payableAmount - appliedOffer.offerAmount;
       }
     }
   }
-
-
 
   //Create record on Transaction
 
   const transaction = await Transaction.create({
     customer: customer._id,
-    vendorId: '',
-    orderId: '',
+    vendorId: "",
+    orderId: "",
     orderValue: payableAmount,
     offerUsed: offerId || "NA",
-    status: "OPEN",
+    status: "OPEN", //FAILED //SUCCESS
     paymentMode: paymentMode,
-    paymentResponse: "Payment is cash on Delivery"
-
+    paymentResponse: "Payment is cash on Delivery",
   });
 
   //return transaction ID
-  return res.status(200).json(transaction)
-
-
-
-}
+  return res.status(200).json(transaction);
+};

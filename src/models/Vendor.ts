@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document} from "mongoose";
 
-export interface VandorDoc extends Document {
+export interface VendorDoc extends Document {
   name: string;
   ownerName: string;
   foodTypes: [string];
@@ -14,9 +14,11 @@ export interface VandorDoc extends Document {
   coverImage: [String];
   rating: number;
   foods: any;
+  lat: number;
+  lng: number;
 }
 
-const VandorSchema = new Schema(
+const VendorSchema = new Schema(
   {
     name: { type: String, required: true },
     ownerName: { type: String, required: true },
@@ -40,6 +42,8 @@ const VandorSchema = new Schema(
         ref: "food",
       },
     ],
+    lat: { type: Number },
+    lng: { type: Number }
   },
   {
     toJSON: {
@@ -55,6 +59,6 @@ const VandorSchema = new Schema(
   }
 );
 
-const Vandor = mongoose.model<VandorDoc>("vendor", VandorSchema);
+const Vendor = mongoose.model<VendorDoc>("vendor", VendorSchema);
 
-export { Vandor };
+export { Vendor };
